@@ -1,6 +1,6 @@
-DROP DATABASE IF EXISTS artbeit;
-CREATE DATABASE arbeit;
-USE arbeit;
+DROP DATABASE IF EXISTS dieArtbeit;
+CREATE DATABASE dieArbeit;
+USE dieArbeit;
 
 CREATE TABLE department
 (
