@@ -9,7 +9,6 @@ CREATE TABLE department
     PRIMARY KEY (id)
 );
 
-
 CREATE TABLE role
 (
     id            INT,
