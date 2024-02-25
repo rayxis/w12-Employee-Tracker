@@ -4,11 +4,28 @@ const inquirer = require('inquirer');
 const initDB   = require('./config/db');
 
 class employeeTracker {
+	data    = {
+		department: [],
+		employee:   [],
+		role:       []
+	};
 	prompts = {
 		deptAdd:      {
 			type:    'input',
 			name:    'addDept',
 			message: `Department you\'d like to add:`
+		},
+		deptDelete:   {
+			type:    'list',
+			name:    'deleteDept',
+			message: `Delete which department:`,
+			choices: this.data.department
+		},
+		empDelete:    {
+			type:    'list',
+			name:    'deleteEmp',
+			message: `Delete which employee:`,
+			choices: this.data.employee
 		},
 		empFirstName: {
 			type:    'input',
@@ -26,9 +43,10 @@ class employeeTracker {
 			message: `Employee Manager:`
 		},
 		empRole:      {
-			type:    'input',
+			type:    'list',
 			name:    'empRole',
-			message: `Role:`
+			message: `Role:`,
+			choices: this.data.role
 		},
 		options:      {
 			type:    'list',
@@ -69,10 +87,17 @@ class employeeTracker {
 				}
 			]
 		},
+		roleDelete:    {
+ 			type:    'list',
+			name:    'deleteRole',
+			message: `Delete which role:`,
+			choices: this.data.role
+		},
 		roleDept:     {
-			type:    'input',
+			type:    'list',
 			name:    'roleDept',
-			message: `Add role to which department:`
+			message: `Add role to which department:`,
+			choices: this.data.department
 		},
 		roleSalary:   {
 			type:    'input',
@@ -87,36 +112,41 @@ class employeeTracker {
 	};
 
 	keys = {
-		deptAdd:     ['deptAdd'],
-		employeeAdd: ['empFirstName', 'empLastName', 'empRole', 'empManager'],
-		roleAdd:     ['roleTitle', 'roleDept', 'roleSalary']
+		deptAdd:        ['deptAdd'],
+		deptDelete:     ['deptDelete'],
+		employeeAdd:    ['empFirstName', 'empLastName', 'empRole', 'empManager'],
+		employeeDelete: ['empDelete'],
+		roleAdd:        ['roleTitle', 'roleDept', 'roleSalary'],
+		roleDelete:     ['roleDelete']
 	};
 
 	queries = {
 		deptAdd: `INSERT INTO department (name)
-                  VALUES (?)`,
+		          VALUES (?)`,
 		deptDelete: `DELETE
-                     FROM department
-                     WHERE id = ?`,
+		             FROM department
+		             WHERE id = ?`,
 		deptList: `SELECT id, name
-                   FROM department`,
+		           FROM department`,
 		employeeAdd: `INSERT INTO employee (first_name, last_name, role_id, manager_id)
-                      VALUES (?, ?, ?, ?)`,
+		              VALUES (?, ?, ?, ?)`,
 		employeeList: `SELECT id, title, salary, department_id
-                       FROM role`,
+		               FROM role`,
 		employeeUpdate: `UPDATE employee
-                         SET first_name=?,
-                             last_name=?,
-                             role_id=?,
-                             manager_id=?
-                         WHERE id = ?`,
-		roleAdd: `INSERT INTO role (title, salary, department_id)
-                  VALUES (?, ?, ?)`,
+		                 SET first_name=?,
+		                     last_name=?,
+		                     role_id=?,
+		                     manager_id=?
+		                 WHERE id = ?`,
+		roleAdd: `INSERT INTO role (title, department_id, salary)
+		          VALUES (?, ?, ?)`,
 		roleDelete: `DELETE
-                     FROM department
-                     WHERE id = ?`,
-		roleList: `SELECT id, title, salary, department_id
-                   FROM role`
+		             FROM department
+		             WHERE id = ?`,
+		roleList: `SELECT role.id, role.title, role.salary, department.name AS department_name
+		           FROM role
+		                INNER JOIN department
+		                ON role.department_id = department.id`
 	};
 
 	constructor() {
@@ -129,10 +159,6 @@ class employeeTracker {
 			await this.mainmenu();
 		})();
 
-	}
-
-	async deptDelete(id) {
-		const query = this.doDB(this.queries.deptDelete, [id]);
 	}
 
 	// Adds an employee
@@ -176,21 +202,31 @@ class employeeTracker {
 	}
 
 	async menuHandler(option) {
+		let result;
+
 		switch (option) {
 			case 'quit':
 				return false;
+			case 'deptAdd':     // Add a department
+			case 'employeeAdd': // Add an employee
+			case 'roleAdd':     // Add a role
+				result = await this.promptUser(this.keys[option]);
+				await this.doDB(this.queries[option], this.keys.roleAdd.map(key => result[key]));
+				// console.log(` successfully added to `);
+				// await this[option]();
+				break;
+			case 'deptDelete':     // Delete a department
+			case 'employeeDelete': // Delete an employee
+			case 'roleDelete':     // Delete a role
+				result = await this.promptUser(this.keys[option]);
+				await this.doDB(this.queries[option]);
+				break;
 			case 'deptList':        // List departments
 			case 'employeeList':    // List employees
 			case 'roleList':        // List roles
 				await this.doDBList(await this.queries[option]);
 				break;
-			case 'deptAdd':     // Add a department
-			case 'employeeAdd': // Add an employee
-			case 'roleAdd':     // Add a role
-				const result = await this.promptUser(this.keys[option]);
-				await this.doDB(this.queries[option], this.keys.roleAdd.map(key => result[key]));
-				// console.log(`${dept.addDept} successfully added to the department.`);
-				// await this[option]();
+			case 'employeeUpdate':  // Update an employee
 				break;
 			default:
 				console.error(`ERROR: ${option} not implemented yet`);
@@ -199,16 +235,25 @@ class employeeTracker {
 	}
 
 	async promptsUpdate(table) {
+		const tableMap = {
+			deptList:     'department',
+			employeeList: 'employee',
+			roleList:     'role'
+		};
+
+		// Loop through the table map
+		for (const [func, table] of Object.entries(tableMap)) {
+			// Clear the array
+			this.data[table].length = 0;
+			// Fetch the database entries and then push the rows. Inquirer only accepts value, not id.
+			const [rows, fields]    = await this.doDB(this.queries[func]);
+			rows.forEach(row => this.data[table].push({...row, value: row.id}));
+		}
 	}
 
 	async promptUser(promptList) {
 		// Return results
 		return await inquirer.prompt(promptList.map(prompt => this.prompts[prompt]));
-	}
-
-	// Removes a role
-	async roleDelete(id) {
-		const query = this.doDB(this.queries.roleDelete, [id]);
 	}
 
 	async stop() {
