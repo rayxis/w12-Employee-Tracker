@@ -1,7 +1,7 @@
 // Load modules
 require('dotenv').config();
 const inquirer = require('inquirer');
-const db       = require('./config/db');
+const initDB   = require('./config/db');
 
 class employeeTracker {
 	prompts = {
@@ -86,84 +86,127 @@ class employeeTracker {
 		}
 	};
 
+	queries = {
+		deptAdd: `INSERT INTO department (name)
+                  VALUES (?)`,
+		deptDelete: `DELETE
+                     FROM department
+                     WHERE id = ?`,
+		deptList: `SELECT id, name
+                   FROM department`,
+		employeeAdd: `INSERT INTO employee (first_name, last_name, role_id, manager_id)
+                      VALUES (?, ?, ?, ?)`,
+		employeeList: `SELECT id, title, salary, department_id
+                       FROM role`,
+		employeeUpdate: `UPDATE employee
+                         SET first_name=?,
+                             last_name=?,
+                             role_id=?,
+                             manager_id=?
+                         WHERE id = ?`,
+		roleAdd: `INSERT INTO role (title, salary, department_id)
+                  VALUES (?, ?, ?)`,
+		roleDelete: `DELETE
+                     FROM department
+                     WHERE id = ?`,
+		roleList: `SELECT id, title, salary, department_id
+                   FROM role`
+	};
+
 	constructor() {
 		console.log('Employee Tracker');
 
-		// TODO: Load the prompts from the database.
-		this.promptUpdate('department');
-		this.promptUpdate('role');
-		this.promptUpdate('employee');
+		// Initialize the database connection
+		(async () => {
+			this.db = await initDB(inquirer, initDB);
 
-		// Prompt the user with the main menu
-		this.promptUser(['options']).then(result => {
-			if (result.options === 'quit') process.exit();
+			await this.mainmenu();
+		})();
 
-			console.log(result.options);
-			this[result.options]();
-		});
 	}
 
-	async promptUpdate(table) {
-	}
-
-	// Add a department
 	async deptAdd() {
 		const dept = await this.promptUser(['deptAdd']);
-		const sql  = `INSERT INTO department (name)
-                      VALUES (:name)`;
 
-		db.execute(sql, [dept])
-		    .then(result => console.log(`${dept.addDept} successfully added to the department.`))
-			// Catch any errors
-			.catch((err) => console.error(err));
-	}
+		// Send the request to the database.
+		const result = await this.doDB(this.queries.deptAdd, [dept.addDept]);
+		console.log(`${dept.addDept} successfully added to the department.`);
 
-	// List departments
-	async deptList() {
-		const query = db.format(`SELECT id, name
-                                      FROM department;`);
+
+		// Call the constructor to load the main menu
+		this.mainmenu();
 	}
 
 	async deptDelete(id) {
-		const query = db.format(`DELETE
-                                      FROM department
-                                      WHERE id = ?`, [id]);
-	}
-
-	async doDB(query) {
-		return await db.query(query, (err, result) => {});
-
+		const query = this.doDB(this.queries.deptDelete, [id]);
 	}
 
 	// Adds an employee
+	async doDB(sql, data = undefined) {
+		try {
+			return await this.db.execute(sql, data);
+		} catch (error) {
+			// Catch any errors and log them to the console.
+			console.error(error);
+		}
+	}
+
+	async doDBList(query) {
+		// Send the request to the database.
+		const [rows, fields] = await this.doDB(query);
+		console.table(rows);
+
+		// Call the constructor to load the main menu
+		this.mainmenu();
+	}
+
+	// Add a department
 	async employeeAdd() {
 		const employee = await this.promptUser(['empFirstName', 'empLastName', 'empRole', 'empManager']);
 
 		// "Add an employee"
-		const query = mysql.format(`INSERT INTO employee (first_name, last_name, role_id, manager_id)
-                                    VALUES (?, ?, ?,
-                                            ?)`, [employee.empFirstName, employee.empLastName, employee.empRole, employee.empManager]);
-	}
-
-	// Lists employees
-	async employeeList(filter = undefined) {
-		// "View all employees"
-		const query = db.format(`SELECT id, title, salary, department_id
-                                      FROM role;`);
+		const query = this.doDB(this.queries.employeeAdd, [employee.empFirstName, employee.empLastName, employee.empRole, employee.empManager]);
 	}
 
 	// Updates an employee
 	async employeeUpdate() {
 		// "Update an employee role"
-		const query = db.format(`UPDATE employee
-                                      SET first_name=?,
-                                          last_name=?,
-                                          role_id=?,
-                                          manager_id=?
-                                      WHERE id = ?;`, [employee.empFirstName, employee.empLastName, employee.empRole, employee.empManager]);
+		const query = this.doDB(this.queries.employeeUpdate, [employee.empFirstName, employee.empLastName, employee.empRole, employee.empManager]);
 	}
 
 	// Asks the user questions
+	async mainmenu() {
+		// Update the database prompts
+		this.promptUpdate('department');
+		this.promptUpdate('role');
+		this.promptUpdate('employee');
+
+		// Prompt the user with the main menu
+		while (true) {
+			this.promptUser(['options']).then(async result => {
+				if (result.options === 'quit') process.exit(0);
+
+				switch (result.options) {
+					case 'deptList':        // List departments
+					case 'employeeList':    // List employees
+					case 'roleList':        // List roles
+						await this.doDBList(this.queries[result.options]);
+
+						break;
+					case 'deptAdd':
+					case 'employeeAdd':
+					case 'roleAdd':
+						this[result.options]();
+					default:
+						console.error(`ERROR: ${result.options} not implemented yet`);
+				}
+			});
+		}
+	}
+
+	async promptUpdate(table) {
+	}
+
 	async promptUser(promptList) {
 		// Return results
 		return await inquirer.prompt(promptList.map(prompt => this.prompts[prompt]));
@@ -174,29 +217,17 @@ class employeeTracker {
 		const role = await this.promptUser(['roleTitle', 'roleDept', 'roleSalary']);
 
 		// "Add a role"
-		const query = db.format(`INSERT INTO role (title, salary, department_id)
-                                      VALUES (?, ?, ?)`, [role.roleTitle, role.roleDept, role.roleSalary]);
+		const query = this.doDB(this.queries.roleAdd, [role.roleTitle, role.roleDept, role.roleSalary]);
 
-	}
-
-	// Lists roles
-	async roleList() {
-		// "View all roles"
-		const query = db.format(`SELECT id, title, salary, department_id
-                                      FROM role;`);
 	}
 
 	// Removes a role
-	async roleRemove(id) {
-		const query = db.format(`DELETE
-                                      FROM department
-                                      WHERE id = ?`, [id]);
-
-
+	async roleDelete(id) {
+		const query = this.doDB(this.queries.roleDelete, [id]);
 	}
 
 	async stop() {
-		if (db) await db.end();
+		if (this.db) await this.db.end();
 	}
 }
 
