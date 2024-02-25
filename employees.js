@@ -86,6 +86,12 @@ class employeeTracker {
 		}
 	};
 
+	keys = {
+		deptAdd:     ['deptAdd'],
+		employeeAdd: ['empFirstName', 'empLastName', 'empRole', 'empManager'],
+		roleAdd:     ['roleTitle', 'roleDept', 'roleSalary']
+	};
+
 	queries = {
 		deptAdd: `INSERT INTO department (name)
                   VALUES (?)`,
@@ -125,18 +131,6 @@ class employeeTracker {
 
 	}
 
-	async deptAdd() {
-		const dept = await this.promptUser(['deptAdd']);
-
-		// Send the request to the database.
-		const result = await this.doDB(this.queries.deptAdd, [dept.addDept]);
-		console.log(`${dept.addDept} successfully added to the department.`);
-
-
-		// Call the constructor to load the main menu
-		this.mainmenu();
-	}
-
 	async deptDelete(id) {
 		const query = this.doDB(this.queries.deptDelete, [id]);
 	}
@@ -158,14 +152,6 @@ class employeeTracker {
 
 		// Call the constructor to load the main menu
 		return;
-	}
-
-	// Add a department
-	async employeeAdd() {
-		const employee = await this.promptUser(['empFirstName', 'empLastName', 'empRole', 'empManager']);
-
-		// "Add an employee"
-		const query = this.doDB(this.queries.employeeAdd, [employee.empFirstName, employee.empLastName, employee.empRole, employee.empManager]);
 	}
 
 	// Updates an employee
@@ -190,21 +176,24 @@ class employeeTracker {
 	}
 
 	async menuHandler(option) {
-		switch (result.options) {
+		switch (option) {
 			case 'quit':
 				return false;
 			case 'deptList':        // List departments
 			case 'employeeList':    // List employees
 			case 'roleList':        // List roles
-				await this.doDBList(await this.queries[result.options]);
+				await this.doDBList(await this.queries[option]);
 				break;
-			case 'deptAdd':
-			case 'employeeAdd':
-			case 'roleAdd':
-				await this[result.options]();
+			case 'deptAdd':     // Add a department
+			case 'employeeAdd': // Add an employee
+			case 'roleAdd':     // Add a role
+				const result = await this.promptUser(this.keys[option]);
+				await this.doDB(this.queries[option], this.keys.roleAdd.map(key => result[key]));
+				// console.log(`${dept.addDept} successfully added to the department.`);
+				// await this[option]();
 				break;
 			default:
-				console.error(`ERROR: ${result.options} not implemented yet`);
+				console.error(`ERROR: ${option} not implemented yet`);
 		}
 		return true;
 	}
@@ -215,15 +204,6 @@ class employeeTracker {
 	async promptUser(promptList) {
 		// Return results
 		return await inquirer.prompt(promptList.map(prompt => this.prompts[prompt]));
-	}
-
-	// Adds a role
-	async roleAdd() {
-		const role = await this.promptUser(['roleTitle', 'roleDept', 'roleSalary']);
-
-		// "Add a role"
-		const query = this.doDB(this.queries.roleAdd, [role.roleTitle, role.roleDept, role.roleSalary]);
-
 	}
 
 	// Removes a role
