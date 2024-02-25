@@ -1,7 +1,7 @@
 // Load modules
 require('dotenv').config();
 const inquirer = require('inquirer');
-const mysql    = require('mysql2/promise');
+const db       = require('./config/db');
 
 class employeeTracker {
 	prompts = {
@@ -36,37 +36,37 @@ class employeeTracker {
 			message: 'Select an option:',
 			choices: [
 				{
-					name: 'View all departments',
-					value: 'deptList',
+					name:  'View all departments',
+					value: 'deptList'
 				},
 				{
-					name: 'View all roles',
-					value: 'roleList',
+					name:  'View all roles',
+					value: 'roleList'
 				},
 				{
-					name: 'View all employees',
-					value: 'employeeList',
+					name:  'View all employees',
+					value: 'employeeList'
 				},
 				{
-					name: 'Add a department',
-					value: 'deptAdd',
+					name:  'Add a department',
+					value: 'deptAdd'
 				},
 				{
-					name: 'Add a role',
-					value: 'roleAdd',
+					name:  'Add a role',
+					value: 'roleAdd'
 				},
 				{
-					name: 'Add an employee',
-					value: 'employeeAdd',
+					name:  'Add an employee',
+					value: 'employeeAdd'
 				},
 				{
-					name: 'Update an employee role',
-					value: 'employeeUpdate',
+					name:  'Update an employee role',
+					value: 'employeeUpdate'
 				},
 				{
-					name: 'Quit',
-					value: 'quit',
-				},
+					name:  'Quit',
+					value: 'quit'
+				}
 			]
 		},
 		roleDept:     {
@@ -89,24 +89,21 @@ class employeeTracker {
 	constructor() {
 		console.log('Employee Tracker');
 
-		// Create a MySQL connection
-		mysql.createConnection({
-			                                 host:              process.env.DB_HOST,
-			                                 user:              process.env.DB_USER,
-			                                 password:          process.env.DB_PASS,
-			                                 database:          process.env.DB_NAME,
-			                                 namedPlaceholders: true
-		                                 })
-		     // Save the connection handle
-		     .then(connection => {
-				 this.db = connection;
-		     })
-			// Catch any errors
-			           .catch((err) => console.error(err));
+		// TODO: Load the prompts from the database.
+		this.promptUpdate('department');
+		this.promptUpdate('role');
+		this.promptUpdate('employee');
 
+		// Prompt the user with the main menu
 		this.promptUser(['options']).then(result => {
 			if (result.options === 'quit') process.exit();
+
+			console.log(result.options);
+			this[result.options]();
 		});
+	}
+
+	async promptUpdate(table) {
 	}
 
 	// Add a department
@@ -115,26 +112,26 @@ class employeeTracker {
 		const sql  = `INSERT INTO department (name)
                       VALUES (:name)`;
 
-		this.db.execute(sql, [dept])
-		    .then(result => console.log('Successfully added.'))
+		db.execute(sql, [dept])
+		    .then(result => console.log(`${dept.addDept} successfully added to the department.`))
 			// Catch any errors
 			.catch((err) => console.error(err));
 	}
 
 	// List departments
 	async deptList() {
-		const query = this.db.format(`SELECT id, name
+		const query = db.format(`SELECT id, name
                                       FROM department;`);
 	}
 
 	async deptDelete(id) {
-		const query = this.db.format(`DELETE
+		const query = db.format(`DELETE
                                       FROM department
                                       WHERE id = ?`, [id]);
 	}
 
 	async doDB(query) {
-		return await this.db.query(query, (err, result) => {});
+		return await db.query(query, (err, result) => {});
 
 	}
 
@@ -151,14 +148,14 @@ class employeeTracker {
 	// Lists employees
 	async employeeList(filter = undefined) {
 		// "View all employees"
-		const query = this.db.format(`SELECT id, title, salary, department_id
+		const query = db.format(`SELECT id, title, salary, department_id
                                       FROM role;`);
 	}
 
 	// Updates an employee
 	async employeeUpdate() {
 		// "Update an employee role"
-		const query = this.db.format(`UPDATE employee
+		const query = db.format(`UPDATE employee
                                       SET first_name=?,
                                           last_name=?,
                                           role_id=?,
@@ -177,7 +174,7 @@ class employeeTracker {
 		const role = await this.promptUser(['roleTitle', 'roleDept', 'roleSalary']);
 
 		// "Add a role"
-		const query = this.db.format(`INSERT INTO role (title, salary, department_id)
+		const query = db.format(`INSERT INTO role (title, salary, department_id)
                                       VALUES (?, ?, ?)`, [role.roleTitle, role.roleDept, role.roleSalary]);
 
 	}
@@ -185,13 +182,13 @@ class employeeTracker {
 	// Lists roles
 	async roleList() {
 		// "View all roles"
-		const query = this.db.format(`SELECT id, title, salary, department_id
+		const query = db.format(`SELECT id, title, salary, department_id
                                       FROM role;`);
 	}
 
 	// Removes a role
 	async roleRemove(id) {
-		const query = this.db.format(`DELETE
+		const query = db.format(`DELETE
                                       FROM department
                                       WHERE id = ?`, [id]);
 
@@ -199,7 +196,7 @@ class employeeTracker {
 	}
 
 	async stop() {
-		if (this.db) await this.db.end();
+		if (db) await db.end();
 	}
 }
 
