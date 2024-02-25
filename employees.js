@@ -157,7 +157,7 @@ class employeeTracker {
 		console.table(rows);
 
 		// Call the constructor to load the main menu
-		this.mainmenu();
+		return;
 	}
 
 	// Add a department
@@ -176,35 +176,40 @@ class employeeTracker {
 
 	// Asks the user questions
 	async mainmenu() {
-		// Update the database prompts
-		this.promptUpdate('department');
-		this.promptUpdate('role');
-		this.promptUpdate('employee');
-
+		let loop = true;
 		// Prompt the user with the main menu
-		while (true) {
-			this.promptUser(['options']).then(async result => {
-				if (result.options === 'quit') process.exit(0);
+		do {
+			// Update the prompts from the database, and then present the user with the main menu.
+			// Then, handle the response.
+			await this.promptsUpdate();
+			const result = await this.promptUser(['options']);
+			loop         = await this.menuHandler(result.options);
+		} while (loop);
 
-				switch (result.options) {
-					case 'deptList':        // List departments
-					case 'employeeList':    // List employees
-					case 'roleList':        // List roles
-						await this.doDBList(this.queries[result.options]);
-
-						break;
-					case 'deptAdd':
-					case 'employeeAdd':
-					case 'roleAdd':
-						this[result.options]();
-					default:
-						console.error(`ERROR: ${result.options} not implemented yet`);
-				}
-			});
-		}
+		process.exit(0);
 	}
 
-	async promptUpdate(table) {
+	async menuHandler(option) {
+		switch (result.options) {
+			case 'quit':
+				return false;
+			case 'deptList':        // List departments
+			case 'employeeList':    // List employees
+			case 'roleList':        // List roles
+				await this.doDBList(await this.queries[result.options]);
+				break;
+			case 'deptAdd':
+			case 'employeeAdd':
+			case 'roleAdd':
+				await this[result.options]();
+				break;
+			default:
+				console.error(`ERROR: ${result.options} not implemented yet`);
+		}
+		return true;
+	}
+
+	async promptsUpdate(table) {
 	}
 
 	async promptUser(promptList) {
