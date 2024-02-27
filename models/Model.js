@@ -1,4 +1,4 @@
-import { capitalize } from '../utils/utils';
+const { capitalize } = require('../utils/utils');
 
 class Model {
 	data = {};
@@ -13,7 +13,7 @@ class Model {
 	// Adds an entry to the database
 	async add() {
 		// Ask the user questions to add an entry to the database.
-		const prompts = await this.promptGet('add');
+		const result = await this.promptGet('add');
 		await this.main.doDB(this.func.add.query, this.func.add.keys.map(key => result[key]));
 		// Sync the data
 		await this.sync();
@@ -24,8 +24,8 @@ class Model {
 
 	async delete() {
 		// Ask the user which item to delete, and delete it.
-		const prompts = await this.promptGet('delete');
-		this.main.doDB(this.func.delete.query, [result.delete]);
+		const result = await this.promptGet('delete');
+		await this.main.doDB(this.func.delete.query, [result.delete]);
 		// Sync the data
 		await this.sync();
 

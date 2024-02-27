@@ -45,7 +45,7 @@ class Role extends Model {
 		delete: {
 			keys: ['delete'],
 			query: `DELETE
-				        FROM department
+				        FROM role
 				        WHERE id = ?`
 		},
 		list:   {
