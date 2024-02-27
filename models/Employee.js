@@ -87,8 +87,10 @@ class Employee extends Model {
 		}
 	};
 
+	// Override Model->sync, just a little bit.
 	async sync() {
 		super.sync();
+		// Add a null option to the synced list (for inquirer)
 		this.data[this.table].push({name: '(None)', value: null});
 	}
 }
