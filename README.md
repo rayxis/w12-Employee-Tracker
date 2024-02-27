@@ -1,6 +1,4 @@
-# w12-Employee-Tracker
-
-Week 12 - Employee Tracker
+# Employee Tracker
 
 ## Description
 
@@ -39,7 +37,7 @@ npm start
 
 ### Demonstration
 
-A video demonstration of the application can be found here: 
+A video demonstration of the application can be found here: https://youtu.be/EN7p5j7CkyM
 
 ### Future Plans
 
