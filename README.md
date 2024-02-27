@@ -32,7 +32,7 @@ npm install
 To run the Employee Tracker application, use the following command in your terminal:
 
 ```shell
-npm start
+node app.js
 ```
 
 ### Demonstration
