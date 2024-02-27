@@ -1,3 +1,5 @@
+import { capitalize } from '../utils/utils';
+
 class Model {
 	data = {};
 	main = undefined;
@@ -17,7 +19,7 @@ class Model {
 		await this.sync();
 
 		// Let the user know that the entry was added.
-		console.log(`${this.capitalize(this.table)} added successfully`);
+		console.log(`${capitalize(this.table)} added successfully`);
 	}
 
 	async delete() {
@@ -28,7 +30,7 @@ class Model {
 		await this.sync();
 
 		// Let the user know that the entry was deleted.
-		console.log(`${this.capitalize(this.table)} deleted successfully`);
+		console.log(`${capitalize(this.table)} deleted successfully`);
 	}
 
 	// List database entries and show a table
@@ -37,6 +39,16 @@ class Model {
 	}
 
 	// Update the row data from the database
+	async promptGet(funcName, cbPreCall = undefined) {
+		// Load the specified function prompts
+		let prompt = this.func[funcName].keys.map(key => this.prompts[key]);
+		// If there is a callback function specified, send the prompt data back and then reassign any changes.
+		if (typeof cbPreCall === 'function') prompt = cbPreCall(prompt);
+		// Ask the user questions and return the results.
+		return await this.main.promptUser(prompt);
+	}
+
+	// Sync data from the database to the data array
 	async sync() {
 		// Clear the data array
 		this.data[this.table].length = 0;
@@ -83,22 +95,7 @@ class Model {
 		await this.sync();
 
 		// Let the user know that the entry was updated.
-		console.log(`${this.capitalize(this.table)} updated successfully`);
-	}
-
-	// Capitalize the first character of the string
-	capitalize(string) {
-		return string.charAt(0).toUpperCase() + string.slice(1);
-	}
-
-	// Get the prompt questions from the model action and prompt the user
-	async promptGet(funcName, cbPreCall = undefined) {
-		// Load the specified function prompts
-		let prompt = this.func[funcName].keys.map(key => this.prompts[key]);
-		// If there is a callback function specified, send the prompt data back and then reassign any changes.
-		if (typeof cbPreCall === 'function') prompt = cbPreCall(prompt);
-		// Ask the user questions and return the results.
-		return await this.main.promptUser(prompt);
+		console.log(`${capitalize(this.table)} updated successfully`);
 	}
 }
 
